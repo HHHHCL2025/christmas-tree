@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Luxury Tree - Mobile Edition</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Ma+Shan+Zheng&display=swap');
+
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020205; 
+            font-family: 'Cinzel', serif; 
+            touch-action: none; 
+            user-select: none; 
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; z-index: 1; }
+        
+        #ui-layer { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 10; 
+            pointer-events: none; 
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%); 
+        }
+        
+        #main-title {
+            position: absolute;
+            top: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            text-align: center;
+            font-family: 'Cinzel', serif;
+            font-weight: 800;
+            font-size: clamp(24px, 8vw, 80px);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0;
+            min-height: 1.2em;
+            padding: 0 10px;
+            
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(180deg, #fffdf0 0%, #eacda3 30%, #d6ae7b 60%, #8b6c42 100%);
+            filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.6));
+            
+            animation: titleFadeIn 2s ease-out forwards 1s;
+        }
+
+        @keyframes titleFadeIn {
+            from { opacity: 0; transform: translate(-50%, -20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        #loader { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            background: #000; 
+            z-index: 100; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: opacity 1.2s; 
+            pointer-events: none; 
+        }
+        .spinner { 
+            width: 50px; 
+            height: 50px; 
+            border: 3px solid rgba(212, 175, 55, 0.1); 
+            border-top: 3px solid #d4af37; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* 🔧 移动端优化：控制按钮 */
+        #top-right-controls { 
+            position: absolute; 
+            top: 15px; 
+            right: 10px; 
+            z-index: 30; 
+            display: flex; 
+            flex-direction: column;
+            gap: 10px; 
+            pointer-events: auto; 
+        }
+        
+        /* 媒体查询：小屏幕优化 */
+        @media (max-width: 768px) {
+            #top-right-controls {
+                top: 10px;
+                right: 5px;
+                gap: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #top-right-controls {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                max-width: 50vw;
+            }
+        }
+        
+        .control-col { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+
+        @media (max-width: 480px) {
+            .control-col {
+                flex-direction: row;
+                gap: 8px;
+            }
+        }
+        
+        .control-btn { 
+            background: rgba(10, 10, 10, 0.75); 
+            border: 1px solid rgba(212, 175, 55, 0.5); 
+            color: #d4af37; 
+            min-width: 90px;
+            min-height: 44px; /* 🔧 苹果推荐的最小触摸尺寸 */
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            font-family: 'Cinzel', serif; 
+            font-size: 13px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            backdrop-filter: blur(8px); 
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        /* 🔧 移动端：加大按钮尺寸 */
+        @media (max-width: 768px) {
+            .control-btn {
+                min-width: 80px;
+                min-height: 48px;
+                padding: 12px 16px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .control-btn {
+                min-width: 70px;
+                min-height: 50px;
+                padding: 10px 12px;
+                font-size: 11px;
+            }
+        }
+
+        .control-btn:hover, .control-btn:active { 
+            background: rgba(212, 175, 55, 0.3); 
+            border-color: rgba(212, 175, 55, 0.9); 
+            color: #fff; 
+            transform: scale(1.05); 
+        }
+        
+        .control-btn:active { 
+            transform: scale(0.95); 
+        }
+        
+        .control-btn.disabled { 
+            color: #666; 
+            border-color: #444; 
+            pointer-events: none;
+        }
+        
+        #file-input, #music-input, #import-input { display: none; }
+
+        /* 🔧 摄像头预览：移动端优化 */
+        #webcam-wrapper { 
+            position: absolute; 
+            bottom: 15px; 
+            right: 15px; 
+            opacity: 0; 
+            pointer-events: none; 
+            border: 1px solid rgba(212, 175, 55, 0.5); 
+            border-radius: 6px; 
+            background: #000; 
+            z-index: 50; 
+            display: flex; 
+            transition: opacity 0.5s;
+            max-width: 160px;
+        }
+
+        @media (max-width: 768px) {
+            #webcam-wrapper {
+                bottom: 10px;
+                right: 10px;
+                max-width: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #webcam-wrapper {
+                bottom: 10px;
+                left: 10px;
+                right: auto;
+                max-width: 100px;
+            }
+        }
+
+        #webcam { display: none; }
+        #webcam-preview { 
+            width: 100%; 
+            height: 100%; 
+            transform: scaleX(-1); 
+        }
+
+        /* 🔧 书信编辑器：移动端优化 */
+        #letter-editor-modal { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            width: 85%; 
+            max-width: 500px; 
+            background: rgba(10, 10, 10, 0.95); 
+            border: 1px solid #d4af37; 
+            border-radius: 12px; 
+            padding: 20px; 
+            z-index: 200; 
+            display: none; 
+            flex-direction: column; 
+            gap: 15px; 
+            pointer-events: auto;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 480px) {
+            #letter-editor-modal {
+                width: 90%;
+                padding: 15px;
+                max-height: 85vh;
+            }
+        }
+
+        #letter-editor-modal h3 { 
+            color: #d4af37; 
+            margin: 0; 
+            text-align: center;
+            font-size: clamp(16px, 4vw, 20px);
+        }
+
+        #letter-text-input { 
+            width: 100%; 
+            min-height: 120px;
+            height: 200px;
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid #444; 
+            color: #fff; 
+            padding: 12px; 
+            resize: vertical; 
+            outline: none;
+            font-size: 15px;
+            border-radius: 6px;
+        }
+
+        @media (max-width: 480px) {
+            #letter-text-input {
+                min-height: 100px;
+                height: 150px;
+                font-size: 14px;
+            }
+        }
+
+        .modal-btn-group { 
+            display: flex; 
+            justify-content: flex-end; 
+            gap: 10px; 
+            flex-wrap: wrap;
+        }
+
+        .modal-btn-group .control-btn {
+            width: 90px;
+        }
+
+        @media (max-width: 480px) {
+            .modal-btn-group {
+                justify-content: center;
+            }
+            .modal-btn-group .control-btn {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+
+        /* 🔧 书信展示：移动端优化 */
+        #letter-overlay { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 150; 
+            background: rgba(0,0,0,0.6); 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            pointer-events: auto; 
+            opacity: 0; 
+            transition: opacity 1.5s ease;
+            padding: 20px;
+        }
+
+        @media (max-width: 480px) {
+            #letter-overlay {
+                padding: 10px;
+            }
+        }
+
+        .letter-paper { 
+            width: 90%;
+            max-width: 600px;
+            height: 80%; 
+            max-height: 800px;
+            background: rgba(255, 252, 240, 0.15); 
+            backdrop-filter: blur(5px); 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            padding: clamp(20px, 5vh, 60px); 
+            box-sizing: border-box; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            transform: translateY(20px); 
+            transition: transform 1.5s ease-out;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 480px) {
+            .letter-paper {
+                width: 95%;
+                height: 85%;
+            }
+        }
+
+        .letter-content { 
+            font-family: 'Ma Shan Zheng', cursive; 
+            font-size: clamp(15px, 2.8vh, 24px); 
+            line-height: 1.8; 
+            color: rgba(255, 255, 255, 0.9); 
+            text-shadow: 0 0 5px rgba(255,215,0, 0.3); 
+            white-space: pre-wrap; 
+            overflow-y: auto; 
+            flex: 1; 
+            scroll-behavior: smooth;
+            padding-right: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .letter-content {
+                font-size: clamp(14px, 3.5vw, 20px);
+                line-height: 1.6;
+            }
+        }
+        
+        .letter-content::-webkit-scrollbar { width: 6px; }
+        .letter-content::-webkit-scrollbar-thumb { 
+            background: rgba(212, 175, 55, 0.4); 
+            border-radius: 3px; 
+        }
+        .cursor::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .letter-close-btn { 
+            position: absolute; 
+            top: 12px; 
+            right: 12px; 
+            width: 36px; 
+            height: 36px; 
+            border: 2px solid rgba(255,255,255,0.5); 
+            border-radius: 50%; 
+            color: rgba(255,255,255,0.8); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            transition: all 0.3s;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 480px) {
+            .letter-close-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 26px;
+            }
+        }
+
+        .letter-close-btn:hover, .letter-close-btn:active { 
+            background: rgba(255,255,255,0.2); 
+            color: #fff; 
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        /* 🔧 触摸提示 */
+        #touch-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #d4af37;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 25;
+            transition: opacity 0.5s;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        @media (max-width: 480px) {
+            #touch-hint {
+                font-size: 12px;
+                padding: 8px 16px;
+                bottom: 15px;
+            }
+        }
+
+        #touch-hint.show {
+            opacity: 1;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="main-title"></div>
+        <div id="touch-hint">滑动旋转 • 双指缩放 • 双击切换</div>
+
+        <div id="top-right-controls">
+            <div class="control-col" id="col-media">
+                <button id="btn-bg-music" class="control-btn">🎵 音乐</button>
+                <button id="btn-add-photo" class="control-btn">📷 照片</button>
+                <button id="btn-write-letter" class="control-btn">✉️ 书信</button>
+                <button id="btn-set-title" class="control-btn">📝 标题</button>
+            </div>
+            <div class="control-col" id="col-system">
+                <button id="btn-import" class="control-btn">📥 导入</button>
+                <button id="btn-export" class="control-btn">📤 导出</button>
+                <button id="btn-fullscreen" class="control-btn">⛶ 全屏</button>
+                <button id="btn-switch-theme" class="control-btn">🎨 主题</button>
+            </div>
+        </div>
+        <input type="file" id="file-input" multiple accept="image/*">
+        <input type="file" id="music-input" accept="audio/mp3,audio/*">
+        <input type="file" id="import-input" accept=".json">
+    </div>
+
+    <div id="letter-editor-modal">
+        <h3>撰写你的心意</h3>
+        <textarea id="letter-text-input" placeholder="在这里写下你想说的话..."></textarea>
+        <div class="modal-btn-group">
+            <button id="btn-cancel-letter" class="control-btn">取消</button>
+            <button id="btn-save-letter" class="control-btn">保存</button>
+        </div>
+    </div>
+
+    <div id="letter-overlay">
+        <div class="letter-paper">
+            <div class="letter-close-btn" id="btn-close-letter-mode">×</div>
+            <div class="letter-content" id="letter-content-display"></div>
+        </div>
+    </div>
+
+    <div id="webcam-wrapper">
+        <video id="webcam" autoplay playsinline webkit-playsinline></video>
+        <canvas id="webcam-preview"></canvas>
+    </div>
+    
+    <audio id="bg-music" loop crossorigin="anonymous"></audio>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'; 
+        import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+
+        // 🔧 移动端检测
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowEnd = isMobile && (navigator.hardwareConcurrency <= 4 || window.innerWidth < 768);
+
+        const CONFIG = {
+            colors: {
+                bg: 0x020205, gold: 0xffd700, red: 0x880000, green: 0x004400,
+                iceBlue: 0xaaddff, iceCyan: 0x00ffff, iceMagenta: 0xff00cc,
+                iceDeep: 0x002244, white: 0xffffff,
+                barbieHot: 0xff1694, barbieSoft: 0xffb7c5, barbieViolet: 0xd461e3
+            },
+            particles: { 
+                // 🔧 根据设备性能调整粒子数
+                count: isLowEnd ? 800 : (isMobile ? 1200 : 1800), 
+                dustCount: isLowEnd ? 600 : (isMobile ? 1000 : 1500), 
+                treeHeight: 28, 
+                treeRadius: 9,
+                snowCount: isLowEnd ? 1200 : (isMobile ? 1800 : 2500), 
+                snowSpeed: 10 
+            },
+            camera: { z: isMobile ? 65 : 55 }, // 🔧 移动端拉远镜头
+            gestures: { palmOpenThreshold: 0.35, sensitivity: 6.0 }
+        };
+
+        const STATE = {
+            mode: 'TREE', focusTarget: null, currentPhotoIndex: -1,
+            currentThemeIndex: 0, 
+            gestureDebounceTimer: 0,
+            isGestureSwitchEnabled: true, 
+            scatterScale: 1.0, gestureBaseSpread: null,
+            hand: { detected: false, x: 0, y: 0 },
+            rotation: { x: 0, y: 0 }, spinVel: { x: 0, y: 0 }, time: 0,
+            wasPointing: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
+            starMesh: null, starHaloMesh: null,
+            letterContent: "", 
+            letterTyper: null, letterStartTimer: null, letterLastTriggerTime: 0,
+            musicData: null,
+            // 🔧 触摸状态
+            touch: {
+                lastTap: 0,
+                startX: 0,
+                startY: 0,
+                lastX: 0,
+                lastY: 0,
+                pinchStart: 0,
+                isPinching: false
+            }
+        };
+
+        let scene, camera, renderer, composer, clock = new THREE.Clock();
+        let mainGroup, starGroup, bgGroup, photoMeshGroup, particleSystem = []; 
+        let galaxySystem = null, snowSystem = null, heartSystem = null;
+        let handLandmarker, video, drawingUtils, canvasCtx;
+        let caneTexture, snowTexture, heartTexture, matLib = {};
+        
+        const _tempVec = new THREE.Vector3();
+        const _targetVec = new THREE.Vector3();
+        const _invMatrix = new THREE.Matrix4();
+
+        async function init() {
+            initThree();            
+            setupEnvironment();     
+            setupLights();          
+            createTextures();       
+            createMaterials(); 
+            
+            createGalaxyBackground(); 
+            createSnowBackground();
+            createHeartBackground();
+            
+            createParticles();      
+            setupPostProcessing();
+            setupEvents();
+            setupTouchControls(); // 🔧 新增触摸控制
+            setupLetterSystem(); 
+            
+            switchTheme(0);
+
+            // 🔧 移动端可选择性禁用摄像头手势识别
+            if (!isLowEnd) {
+                initMediaPipe().catch(console.warn);
+            }
+
+            const loader = document.getElementById('loader');
+            loader.style.opacity = 0;
+            setTimeout(() => loader.remove(), 1200);
+
+            // 🔧 显示触摸提示
+            showTouchHint();
+
+            animate(); 
+        }
+
+        function showTouchHint() {
+            const hint = document.getElementById('touch-hint');
+            hint.classList.add('show');
+            setTimeout(() => {
+                hint.classList.remove('show');
+            }, 4000);
+        }
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(CONFIG.colors.bg);
+            scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.012); 
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 0, CONFIG.camera.z); 
+
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: !isLowEnd, // 🔧 低端设备关闭抗锯齿
+                powerPreference: isMobile ? "low-power" : "high-performance", 
+                depth: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // 🔧 移动端限制像素比
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+            renderer.toneMappingExposure = 1.0; 
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            bgGroup = new THREE.Group(); scene.add(bgGroup);
+            mainGroup = new THREE.Group(); mainGroup.rotation.x = 0.1; scene.add(mainGroup);
+            starGroup = new THREE.Group(); mainGroup.add(starGroup);
+            photoMeshGroup = new THREE.Group(); mainGroup.add(photoMeshGroup);
+        }
+
+        function setupEnvironment() {
+            const pmrem = new THREE.PMREMGenerator(renderer);
+            pmrem.compileEquirectangularShader();
+            scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        }
+
+        function setupLights() {
+            scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+            const bottomLight = new THREE.PointLight(CONFIG.colors.gold, 3, 40);
+            bottomLight.position.set(0, -10, 10);
+            mainGroup.add(bottomLight);
+            
+            const spotGold = new THREE.SpotLight(0xfff0dd, 800);
+            spotGold.position.set(40, 60, 40); spotGold.angle = 0.4; spotGold.decay = 2;
+            scene.add(spotGold);
+            
+            const spotBlue = new THREE.SpotLight(0x4455ff, 400);
+            spotBlue.position.set(-40, 10, -30); spotBlue.lookAt(0,0,0);
+            scene.add(spotBlue);
+        }
+
+        function setupPostProcessing() {
+            // 🔧 移动端降低后期处理质量
+            const bloomStrength = isLowEnd ? 0.3 : (isMobile ? 0.4 : 0.5);
+            const bloom = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight), 
+                1.5, 
+                0.4, 
+                0.85
+            );
+            bloom.threshold = 0.75; 
+            bloom.strength = bloomStrength; 
+            bloom.radius = 0.5;
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            composer.addPass(bloom);
+        }
+
+        function createFrostTexture() {
+            const canvas = document.createElement('canvas'); 
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#666'; ctx.fillRect(0,0,256,256);
+            for(let i=0; i<80; i++) {
+                ctx.strokeStyle = `rgba(255,255,255,${0.2 + Math.random()*0.5})`;
+                ctx.lineWidth = Math.random() * 2 + 0.5;
+                ctx.beginPath();
+                const x = Math.random()*256, y = Math.random()*256;
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + (Math.random()-0.5)*60, y + (Math.random()-0.5)*60);
+                ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createTextures() {
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,128,128);
+            ctx.fillStyle = '#aa0000'; ctx.beginPath();
+            for(let i=-128; i<256; i+=32) { ctx.moveTo(i, 0); ctx.lineTo(i+32, 128); ctx.lineTo(i+16, 128); ctx.lineTo(i-16, 0); }
+            ctx.fill();
+            caneTexture = new THREE.CanvasTexture(canvas);
+            caneTexture.colorSpace =
